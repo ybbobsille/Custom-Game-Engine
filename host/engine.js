@@ -37,12 +37,14 @@ Object.defineProperty(Array.prototype, "equals", {enumerable: false});
 //#endregion
 
 class Color {
+    _filter = {}
+    filter = null
+
     constructor(r, g, b, a) {
         this._r = r
         this._g = g
         this._b = b
         this._a = a
-        this.filter = null
     }
 
     get r() {
@@ -61,6 +63,35 @@ class Color {
         return this._Apply_Filter(this._a, this.filter?.a)
     }
     
+    Set_Filter(name, value, z = 1) {
+        //console.log(value?.r)
+        if (value == null) {
+            delete this._filter[name]
+            if (Object.values(this._filter).length == 0) {
+                this.filter = null
+                return
+            }
+        }
+        else {
+            this._filter[name] = value
+        }
+
+        const f = [[],[],[],[]]
+        for (var [name, value] of Object.entries(this._filter)) {
+            f[0].push(value.r)
+            f[1].push(value.g)
+            f[2].push(value.b)
+            f[3].push(value.a)
+        }
+        
+        this.filter = {
+            r: engine.Average(f[0]),
+            g: engine.Average(f[1]),
+            b: engine.Average(f[2]),
+            a: engine.Average(f[3])
+        }
+    }
+
     _Apply_Filter(value, filter) {
         return (filter ?? value)
     }
@@ -132,13 +163,14 @@ class Color {
         const bottom = this
         const top = this.filter
         if (!top) return [this.r, this.g, this.b, this.a]
+        //console.log(top)
         // bottom = {r,g,b,a}, top = {r,g,b,a}
         const aA = bottom.a / 255;
         const aB = top.a / 255;
-
+    
         const outA = aB + aA * (1 - aB);
 
-        if (outA === 0) return { r:0, g:0, b:0, a:0 };
+        if (outA === 0) return [0,0,0,0];
 
         const r = (top.r * aB + bottom.r * aA * (1 - aB)) / outA;
         const g = (top.g * aB + bottom.g * aA * (1 - aB)) / outA;
@@ -270,6 +302,11 @@ const engine = {
     },
     Random_entry(list) {
         return list[Math.round(Math.random() * list.length)]
+    },
+    Average(values) {
+        var sum = 0
+        values.forEach(n => sum += n)
+        return sum / values.length
     },
 
     color: Color

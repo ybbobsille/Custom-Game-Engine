@@ -64,7 +64,8 @@ const bot_config = {
 }
 
 class Bot_Handler {
-    constructor(name) {
+    constructor(name, id) {
+        this.bot_id = id
         this.name = name
         this.territory = Main.Register_Territory(name)
         this.selected_pixels = []
@@ -93,7 +94,7 @@ class Bot_Handler {
             this.position_loyalty = 0
             this.selected_pixels.forEach(pixel => {
                 if (pixel.owner == this.territory) {
-                    pixel.filter = null
+                    pixel.Set_Filter("territory", null)
                     pixel.owner = "wild"
                 }
             });
@@ -102,7 +103,7 @@ class Bot_Handler {
             
             this.selected_pixels.forEach(pixel => {
                 if (pixel.owner != "void") {
-                    pixel.filter = Main.territories[this.territory].color
+                    pixel.Set_Filter("territory", Main.territories[this.territory].color)
                     pixel.owner = this.territory
                 }
             });
@@ -147,7 +148,7 @@ class Bot_Handler {
             this.selected_pixels.forEach(pixel => {
                 if (pixel.owner == "wild") {
                     pixel.owner = this.territory
-                    pixel.filter = Main.territories[this.territory].color
+                    pixel.Set_Filter("territory", Main.territories[this.territory].color)
                 }
             })
         }
@@ -197,6 +198,14 @@ class Bot_Handler {
                 ))
             return [attack_candidates, my_score]
         }
+        
+        // updates are only needed every once and while
+        const freqency = {
+            "initial":1,
+            "early":2,
+            "main":5
+        }
+        if ((engine.Tick_Index() + this.bot_id) % (freqency[this.phase]) != 0) return
 
         if (this.phase == "initial") {
             //this phase is purely just claim land. it will move the 'early' phase if there is no wild to claim.
@@ -211,7 +220,7 @@ class Bot_Handler {
         }
         else if (this.phase == "early") {
             // this phase mainly about getting land from others.
-            
+
             if (!this.focus) {
                 const [threats, my_score] = calc_neighbor_threat()
                 if (Object.keys(threats).length == 0) {
@@ -284,6 +293,12 @@ class Bot_Handler {
                     break;
                 }
             }
+
+            if (Main.map.get(100, 100).owner == this.territory && this._city_test != true) {
+                console.log("Starting city test...")
+                this._city_test = true
+                this._city = new Main.structures.city(this.territory, 100, 100)
+            }
         }
     }
 }
@@ -312,6 +327,6 @@ export function init() {
     if (!Main.settings.bots || Main.settings.bot_count == 0) return
 
     for (var i=0; i<Main.settings.bot_count; i++) {
-        bots.push(new Bot_Handler(`Bot_${i}`))
+        bots.push(new Bot_Handler(`Bot_${i}`, i))
     }
 }

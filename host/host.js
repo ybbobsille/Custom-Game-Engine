@@ -350,9 +350,9 @@ global.Game_Settings = {
     tick_rate:10
 }
 
-//Game_Loop()
-//    .catch(e => console.error(e))
-start(Handle_Answer("B/-A-A-B_IAIA"))
+Game_Loop()
+    .catch(e => console.error(e))
+//start(Handle_Answer("B/-A-A-B_IAIA"))
 //const rl = readline.createInterface({
 //    input: process.stdin,
 //    output: process.stdout,

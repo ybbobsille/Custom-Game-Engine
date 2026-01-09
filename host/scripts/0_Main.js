@@ -56,6 +56,7 @@ class Map_Pixel extends engine.color {
 
 class Map_Handler {
     raw = null;
+    structures = [];
 
     constructor(name) {
         this.raw = this._read_bmp(`./maps/${name}.bmp`)
@@ -171,7 +172,7 @@ class Map_Handler {
             for (let x = 0; x < width; x++) {
                 const pixel = this.raw[y][x];
                 const [r, g, b, a] = pixel.rgba
-                
+
                 data[idx++] = b;
                 data[idx++] = r;
                 data[idx++] = g;
@@ -193,10 +194,10 @@ class Map_Handler {
         var changes = [];
         //FIXME: make pixels report chaged to the map_handler to void checking every land pixel
         this.land.forEach(pixel => {
-                if (pixel.changed) {
-                    changes.push(pixel)
-                }
-            })
+            if (pixel.changed) {
+                changes.push(pixel)
+            }
+        })
 
         changes = changes.splice(0, max_changes)
         changes.forEach(pixel => pixel.Flush_Changes())
@@ -205,14 +206,19 @@ class Map_Handler {
             return [pixel.x, pixel.y, ...pixel.rgba]
         })
     }
+
+    Register_Structure(structure) {
+        this.structures.push(structure)
+    }
 }
 
 class Territory_Manager {
     land;
     territory;
     color;
+    structures = [];
 
-    constructor (land, territory, troops) {
+    constructor(land, territory, troops) {
         land = land.filter(pixel => pixel.owner != "void")
         this.land = land
         this.territory = territory
@@ -221,10 +227,10 @@ class Territory_Manager {
         this.color = engine.public.territories[territory].color
         this.attacking_progress = {}
         this.dead = false
-        
+
         land.forEach(pixel => {
             if (pixel.owner != "void") {
-                pixel.filter = this.color
+                pixel.Set_Filter("territory", this.color)
                 pixel.owner = this.territory
             }
         })
@@ -256,7 +262,7 @@ class Territory_Manager {
     }
 
     Claim_Land(x, y) {
-        const pixel = engine.public.map.get(x,y)
+        const pixel = engine.public.map.get(x, y)
         if (pixel.owner != "void") {
             if (pixel.owner != "wild") {
                 const owner = engine.public.territory_objects[pixel.owner]
@@ -277,10 +283,10 @@ class Territory_Manager {
                 }
             }
 
-            pixel.filter = this.color
+            pixel.Set_Filter("territory", this.color)
             pixel.owner = this.territory
             this.land.push(pixel)
-            
+
             return true
         }
         return false
@@ -329,55 +335,87 @@ class Territory_Manager {
                 return
             }
             bordering.forEach(pixel => {
-                //TODO: update to make troop count effect it
                 if (pixel.owner == territory && troops > 0) {
                     troops--
                     if (engine.Chance(troops / (max_troops / 6) * 100)) {
-                        if (pixel.owner != "wild") troops -= Math.floor(((engine.public.territory_objects[pixel.owner]?.troops || 0) * engine.public.settings.attacking_cost) / this.troops)
-                    
+                        if (pixel.owner != "wild") troops -= Math.floor(((engine.public.territory_objects[pixel.owner]?.troops || 0) * engine.public.settings.attacking_cost) / troops)
+
                         this.Claim_Land(pixel.x, pixel.y)
                     }
                 }
             })
-            
+
             this.attacking_progress[territory] = troops
         })
 
-        const [a,b,c,x] = [1,2.5,1,troop_percent*5]
-        this.troops += Math.pow(a*2.718, -(Math.pow(x-b, 2) / 2 * Math.pow(c, 2)))
+        const [a, b, c, x] = [1, 2.5, 1, troop_percent * 5]
+        this.troops += Math.pow(a * 2.718, -(Math.pow(x - b, 2) / 2 * Math.pow(c, 2)))
             * (max_troops * engine.public.settings.troop_gain_rate)
 
         this.troops = Math.min(max_troops, this.troops)
         this.money += Math.floor(this.troops * engine.public.settings.troop_income)
     }
+
+    Register_Structure(structure) {
+        this.structures.push(structure)
+        engine.public.map.Register_Structure(structure)
+    }
+}
+
+class Structure {
+
+}
+
+class City extends Structure {
+    constructor(territory, x, y) {
+        super()
+        this.x = x
+        this.y = y
+        this.host = engine.public.map.get(x, y)
+        this.owner = territory
+        this.territory_object = engine.public.territory_objects[territory]
+
+        this.territory_object.Register_Structure(this)
+
+        // testing
+        const circle = engine.public.map.get_Circle(x, y, 5)
+        circle.forEach(pixel => {
+            pixel.Set_Filter("structure", new engine.color(255, 0, 0, 0), 2)
+        })
+    }
 }
 
 function Generate_Territory_Color() {
-    const used = Object.values(engine.public.territories).map(t => t.color.hsla[0]);
-
-    if (used.length === 0) {
-        return engine.color.From_HSLA(0, 45, 70, 50);
+    const hues = Object.values(engine.public.territories).map(t => {
+        const hsla = t.color.hsla
+        return hsla ? hsla[0] : undefined
+    }).filter(n => n != undefined);
+    if (!hues || hues.length === 0) {
+        return engine.color.From_HSLA(0, 45, 70, 50); // default hue if none exist
     }
 
-    const sorted = used.slice().sort((a, b) => a - b);
+    // Normalize and sort
+    const sorted = hues
+        .map(h => ((h % 360) + 360) % 360)
+        .sort((a, b) => a - b);
 
-    const points = [...sorted, sorted[0] + 360];
-
-    let bestGap = -1;
+    let maxGap = 0;
     let bestHue = 0;
 
-    for (let i = 0; i < points.length - 1; i++) {
-        const a = points[i];
-        const b = points[i + 1];
-        const gap = b - a;
+    for (let i = 0; i < sorted.length; i++) {
+        const current = sorted[i];
+        const next = sorted[(i + 1) % sorted.length];
 
-        if (gap > bestGap) {
-            bestGap = gap;
-            bestHue = a + gap / 2;
+        // Wrap-around gap
+        const gap = (i === sorted.length - 1)
+            ? (360 - current + next)
+            : (next - current);
+
+        if (gap > maxGap) {
+            maxGap = gap;
+            bestHue = (current + gap / 2) % 360;
         }
     }
-
-    bestHue = bestHue % 360;
 
     return engine.color.From_HSLA(bestHue, 45, 70, 50);
 }
@@ -394,7 +432,7 @@ function Register_Territory(name) {
         }
     }
     engine.public.territories[id] = {
-        name:name,
+        name: name,
         color: Generate_Territory_Color()
     }
     return id
@@ -410,7 +448,7 @@ export function tick() {
         console.warn("Warning! tick duration is abnormaly high!")
     }
     fs.writeFileSync("./tick_duration.txt", `${global.tick_duration} (${Math.round(global.tick_duration / (1000 / engine.tick_rate) * 100)}%)`)
-    
+
     Object.values(engine.public.territory_objects).forEach(TM => TM._tick())
 
     engine.network.Send_All({
@@ -418,7 +456,7 @@ export function tick() {
         data: engine.public.map.Find_Changes(5000)
     })
 
-    //_render_to_file("./out.bmp")
+    _render_to_file("./out.bmp")
 
     if (engine.Tick_Index() % (global.Game_Settings.tick_rate * 30) == 0) {
         // refresh the map buffer every 30 seconds
@@ -444,14 +482,14 @@ export function ui_script(handler) {
         switch (msg.type) {
             case "map_data":
                 handler.renderer.Size(msg.data.size[0], msg.data.size[1])
-                handler.renderer.Set_Square(0,0, msg.data.size[0], msg.data.size[1], 0,0,0)
+                handler.renderer.Set_Square(0, 0, msg.data.size[0], msg.data.size[1], 0, 0, 0)
                 break;
             case "map_update":
-                msg.data.forEach(([x,y,r,g,b,a]) => {
+                msg.data.forEach(([x, y, r, g, b, a]) => {
                     if (x === 100 && y === 100) {
-        console.log("Pixel 100,100:", r, g, b, a);
-    }
-                    handler.renderer.Set_Pixel(x,y,r,g,b)
+                        console.log("Pixel 100,100:", r, g, b, a);
+                    }
+                    handler.renderer.Set_Pixel(x, y, r, g, b)
                 })
                 break
             default:
@@ -463,16 +501,19 @@ export function ui_script(handler) {
 engine.public = {
     settings: {
         map: "basic",
-        bots:true,
-        bot_count:10,
+        bots: true,
+        bot_count: 10,
         troop_gain_rate: 0.05,
         territory_value: 4, // the number of troops to alow per-space.
         attacking_cost: 8,
         troop_income: 0.01, // the amount of money to get every tick for every troop 
         starting_money: 5000
     },
-    territories:{},
-    territory_objects:{},
+    structures: {
+        city: City
+    },
+    territories: {},
+    territory_objects: {},
 
     map: null,
 
