@@ -65,10 +65,14 @@ function Ui_Setup(ui_scripts) {
     <style>
     body {
         margin: 0;
+        background-color: black;
     }
 
     canvas {
         border: 2px solid black;
+        height: 100vh;
+        aspect-ratio: 1/1;
+        image-rendering: pixelated;
     }
     </style>
 
@@ -212,13 +216,13 @@ async function Game_Loop() {
                     socket.channel.send(JSON.stringify(data))
                 }
                 catch (e) {
-                    console.log(socket.channel.readyState)
+                    console.log("Error in socket:", socket.channel.readyState)
                     //console.log(e)
                 }
             }
         }
         catch (e) {
-            console.log(e)
+            console.log("Error while sending game data:", e)
         }
         global.tick_duration = Date.now() - tick_start
     }
@@ -350,9 +354,9 @@ global.Game_Settings = {
     tick_rate:10
 }
 
-Game_Loop()
-    .catch(e => console.error(e))
-//start(Handle_Answer("B/-A-A-B_IAIA"))
+//Game_Loop()
+//    .catch(e => console.error(e))
+start(Handle_Answer("B/-A-A-B_IAIA"))
 //const rl = readline.createInterface({
 //    input: process.stdin,
 //    output: process.stdout,

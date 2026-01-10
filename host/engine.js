@@ -4,7 +4,7 @@
 // Retrieved 2025-12-14, License - CC BY-SA 4.0
 
 // Warn if overriding existing method
-if(Array.prototype.equals)
+if (Array.prototype.equals)
     console.warn("Overriding existing Array.prototype.equals. Possible causes: New API defines the method, there's a framework conflict or you've got double inclusions in your code.");
 // attach the .equals method to Array's prototype to call it on any array
 Array.prototype.equals = function (array) {
@@ -12,28 +12,28 @@ Array.prototype.equals = function (array) {
     if (!array)
         return false;
     // if the argument is the same array, we can be sure the contents are same as well
-    if(array === this)
+    if (array === this)
         return true;
     // compare lengths - can save a lot of time 
     if (this.length != array.length)
         return false;
 
-    for (var i = 0, l=this.length; i < l; i++) {
+    for (var i = 0, l = this.length; i < l; i++) {
         // Check if we have nested arrays
         if (this[i] instanceof Array && array[i] instanceof Array) {
             // recurse into the nested arrays
             if (!this[i].equals(array[i]))
-                return false;       
-        }           
-        else if (this[i] != array[i]) { 
+                return false;
+        }
+        else if (this[i] != array[i]) {
             // Warning - two different object instances will never be equal: {x:20} != {x:20}
-            return false;   
-        }           
-    }       
+            return false;
+        }
+    }
     return true;
 }
 // Hide method from for-in loops
-Object.defineProperty(Array.prototype, "equals", {enumerable: false});
+Object.defineProperty(Array.prototype, "equals", { enumerable: false });
 //#endregion
 
 class Color {
@@ -62,7 +62,7 @@ class Color {
     get a() {
         return this._Apply_Filter(this._a, this.filter?.a)
     }
-    
+
     Set_Filter(name, value, z = 1) {
         //console.log(value?.r)
         if (value == null) {
@@ -76,14 +76,14 @@ class Color {
             this._filter[name] = value
         }
 
-        const f = [[],[],[],[]]
+        const f = [[], [], [], []]
         for (var [name, value] of Object.entries(this._filter)) {
             f[0].push(value.r)
             f[1].push(value.g)
             f[2].push(value.b)
             f[3].push(value.a)
         }
-        
+
         this.filter = {
             r: engine.Average(f[0]),
             g: engine.Average(f[1]),
@@ -156,7 +156,7 @@ class Color {
 
         if (h < 0) h += 360;
 
-        return [ h, s*100, l*100, this.a ];
+        return [h, s * 100, l * 100, this.a];
     }
 
     get rgba() {
@@ -167,10 +167,10 @@ class Color {
         // bottom = {r,g,b,a}, top = {r,g,b,a}
         const aA = bottom.a / 255;
         const aB = top.a / 255;
-    
+
         const outA = aB + aA * (1 - aB);
 
-        if (outA === 0) return [0,0,0,0];
+        if (outA === 0) return [0, 0, 0, 0];
 
         const r = (top.r * aB + bottom.r * aA * (1 - aB)) / outA;
         const g = (top.g * aB + bottom.g * aA * (1 - aB)) / outA;
@@ -261,7 +261,7 @@ const engine = {
     },
     Distance(x1, y1, x2, y2) {
         // returns the distance from (x1, y1) to (x2, y2)
-        return Math.sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2))
+        return Math.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2))
     },
     Tick_Index() {
         // returns the current tick index (number of ticks since start)
@@ -277,7 +277,7 @@ const engine = {
 
         engine.package_name = package_name
         engine.package_version = package_version
-        global.engine_store[package_name] = { engine, version:package_version }
+        global.engine_store[package_name] = { engine, version: package_version }
         const engines = {}
         for (var name of Object.keys(dependancies)) {
             engines[name] = engine.Get_Package(name, dependancies[name])
@@ -307,6 +307,21 @@ const engine = {
         var sum = 0
         values.forEach(n => sum += n)
         return sum / values.length
+    },
+    Shuffle(array) {
+        let currentIndex = array.length;
+
+        // While there remain elements to shuffle...
+        while (currentIndex != 0) {
+
+            // Pick a remaining element...
+            let randomIndex = Math.floor(Math.random() * currentIndex);
+            currentIndex--;
+
+            // And swap it with the current element.
+            [array[currentIndex], array[randomIndex]] = [
+                array[randomIndex], array[currentIndex]];
+        }
     },
 
     color: Color

@@ -66,12 +66,12 @@ class Map_Handler {
         this.width = this.raw.length
 
         this.raw.forEach(row => {
-            row.forEach(p => this.flat.push(p))
-        })
-        this.flat.forEach(pixel => {
-            if (pixel.owner != "void") {
-                this.land.push(pixel)
-            }
+            row.forEach(p => {
+                this.flat.push(p)
+                if (p.owner != "void") {
+                    this.land.push(p)
+                }
+            })
         })
     }
 
@@ -199,6 +199,9 @@ class Map_Handler {
             }
         })
 
+        if (changes.length > max_changes * 5) {
+            engine.Shuffle(changes)
+        }
         changes = changes.splice(0, max_changes)
         changes.forEach(pixel => pixel.Flush_Changes())
 
@@ -372,15 +375,24 @@ class City extends Structure {
         this.x = x
         this.y = y
         this.host = engine.public.map.get(x, y)
-        this.owner = territory
+        this.owner = engine.public.territory_objects[territory]
         this.territory_object = engine.public.territory_objects[territory]
 
         this.territory_object.Register_Structure(this)
 
+        if (this.owner.money < engine.public.settings.cost.city) {
+            delete this
+            throw new Error("Not enough money to buy city")
+        }
+        else {
+            this.owner.money -= engine.public.settings.cost.city
+        }
+
         // testing
+        const city_color = new engine.color(255, 255, 255, 0)
         const circle = engine.public.map.get_Circle(x, y, 5)
         circle.forEach(pixel => {
-            pixel.Set_Filter("structure", new engine.color(255, 0, 0, 0), 2)
+            pixel.Set_Filter("structure", city_color, 2)
         })
     }
 }
@@ -507,7 +519,10 @@ engine.public = {
         territory_value: 4, // the number of troops to alow per-space.
         attacking_cost: 8,
         troop_income: 0.01, // the amount of money to get every tick for every troop 
-        starting_money: 5000
+        starting_money: 5000,
+        cost: {
+            city: 50000
+        }
     },
     structures: {
         city: City

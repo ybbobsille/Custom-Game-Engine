@@ -1,6 +1,6 @@
 import engine from "../engine.js"
 engine.Vcheck("1.0.0")
-const { Main } = engine.Register("Bots", "1.0.0", {"Main":"1.0.0"})
+const { Main } = engine.Register("Bots", "1.0.0", { "Main": "1.0.0" })
 
 const bots = []
 var bot_placements = null
@@ -15,12 +15,12 @@ const bot_config = {
         // the ideal minimum distance to keep other territories
         ideal_distance: 15,
         // how fast the willingness to stay decays after ideal distance (higher is more tolerent to close territories)
-        distance_falloff: {   
+        distance_falloff: {
             player: 0.7,
             bot: 0.9
         },
         // starting size of the bots territory
-        starting_size:3.5,
+        starting_size: 3.5,
         // how fast it will grow loyal to its position and fight for it
         position_loyalty: 0.2,
         // how fast it will gorw stressful of its current position, and more willing to give it up
@@ -41,7 +41,7 @@ const bot_config = {
         // NOTE: respect.player is cot currently used
         respect: {
             player: 0.8,
-            bot: 0.8 
+            bot: 0.8
         },
         // this is how much deviation to have in the respect (chosen at game start for each bot)
         // the respect for bots and players will be limited between 1 and 0
@@ -100,7 +100,7 @@ class Bot_Handler {
             });
             this.current_location = [x, y]
             this.selected_pixels = Main.map.get_Circle(x, y, bot_config.start.starting_size)
-            
+
             this.selected_pixels.forEach(pixel => {
                 if (pixel.owner != "void") {
                     pixel.Set_Filter("territory", Main.territories[this.territory].color)
@@ -115,7 +115,7 @@ class Bot_Handler {
             var willingness = bot_config.start.base_willingness
             //TODO: include player pos's in the relitvent placements
             const relivent_placments = bot_placements.filter(p => engine.Distance(p[0], p[1], this.current_location[0], this.current_location[1]) < bot_config.start.ideal_distance)
-            
+
             relivent_placments.forEach(point => {
                 const distance = engine.Distance(this.current_location[0], this.current_location[1], point[0], point[1])
                 // 0 - 1
@@ -136,7 +136,7 @@ class Bot_Handler {
                 Selection_Location(this.target_location[0], this.target_location[1])
             }
             else {
-                this.position_loyalty +=  bot_config.start.position_loyalty
+                this.position_loyalty += bot_config.start.position_loyalty
             }
         }
         else {
@@ -183,8 +183,8 @@ class Bot_Handler {
 
         const calc_neighbor_threat = () => {
             const bordering_terr = this.land.neighbors.filter(t => t != "void")
-            
-            const sizes = bordering_terr.map(tn => 
+
+            const sizes = bordering_terr.map(tn =>
                 Main.territory_objects[tn]?.land?.length
             )
             const my_size = this.land.land.length
@@ -193,17 +193,17 @@ class Bot_Handler {
             const scores = sizes.map(s => (s - low) / high)
             const my_score = (my_size - low) / high
 
-            const attack_candidates = Object.fromEntries(scores.map(s => 
-                    [bordering_terr[scores.indexOf(s)], 1 - s]
-                ))
+            const attack_candidates = Object.fromEntries(scores.map(s =>
+                [bordering_terr[scores.indexOf(s)], 1 - s]
+            ))
             return [attack_candidates, my_score]
         }
-        
+
         // updates are only needed every once and while
         const freqency = {
-            "initial":1,
-            "early":2,
-            "main":5
+            "initial": 1,
+            "early": 2,
+            "main": 5
         }
         if ((engine.Tick_Index() + this.bot_id) % (freqency[this.phase]) != 0) return
 
@@ -225,14 +225,14 @@ class Bot_Handler {
                 const [threats, my_score] = calc_neighbor_threat()
                 if (Object.keys(threats).length == 0) {
                     this.phase = "main"
-                    return 
+                    return
                 }
                 const attack_candidates = Object.fromEntries(
-                    Object.entries(threats).filter(e => 
+                    Object.entries(threats).filter(e =>
                         e[1] * this.respect.bot > my_score || this.focusless > 30
                     )
                 )
-                
+
                 for (var n of Object.keys(attack_candidates)) {
                     if (engine.Chance(50 + (45 * attack_candidates[n]) + (this.focusless / 2)) || this.focusless > 100) {
                         this.focus = n
@@ -247,7 +247,7 @@ class Bot_Handler {
                         this.focusless += 1
                         return
                     }
-                    
+
                     this.focus = target[0]
                     this.focus_strength = target[1]
                 }
@@ -260,7 +260,7 @@ class Bot_Handler {
                 if (engine.Chance(bot_config.Early.Attack_Chance * this.patience * 100)) {
                     if (!this.land.attacking(this.focus)) {
                         this.land.attack(this.focus, 20)
-                    } 
+                    }
                 }
                 else if (!this.land.attacking(this.focus) && engine.Chance(bot_config.Early.Focus_Switch * 100)) {
                     this.focus = null
@@ -279,7 +279,7 @@ class Bot_Handler {
             }
 
             const [threats, my_score] = calc_neighbor_threat()
-            
+
             Object.keys(threats).forEach(tn => {
                 threats[tn] = {
                     score: threats[tn],
@@ -294,7 +294,7 @@ class Bot_Handler {
                 }
             }
 
-            if (Main.map.get(100, 100).owner == this.territory && this._city_test != true) {
+            if (Main.map.get(100, 100).owner == this.territory && this._city_test != true && this.land.money >= Main.settings.cost.city) {
                 console.log("Starting city test...")
                 this._city_test = true
                 this._city = new Main.structures.city(this.territory, 100, 100)
@@ -326,7 +326,7 @@ export async function tick() {
 export function init() {
     if (!Main.settings.bots || Main.settings.bot_count == 0) return
 
-    for (var i=0; i<Main.settings.bot_count; i++) {
+    for (var i = 0; i < Main.settings.bot_count; i++) {
         bots.push(new Bot_Handler(`Bot_${i}`, i))
     }
 }
