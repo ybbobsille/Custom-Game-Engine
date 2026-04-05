@@ -2,7 +2,7 @@
   "name": "rts-game",
   "version": "1.0.0",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "cd host && node test.js",
     "host": "cd host && node host.js",
     "signal": "node signal/signal.js",
     "build": "inliner client/index.html > dist/client.html",

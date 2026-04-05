@@ -134,6 +134,9 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
-host/out.bmp
+
 /host/.clinic
+
+host/out.bmp
 host/tick_duration.txt
+host/scripts/*

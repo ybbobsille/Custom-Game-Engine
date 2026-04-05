@@ -4,7 +4,6 @@ import { WebSocket } from "ws";
 import fs from "node:fs";
 
 var Base64 = {
-
     ALPHA: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/',
     encode: function (value) {
 
@@ -21,7 +20,6 @@ var Base64 = {
 
         return result;
     },
-
     decode: function (value) {
 
         var result = 0;
@@ -103,6 +101,9 @@ function Ui_Setup(ui_scripts) {
                 if (!channel_listeners[network_name]) channel_listeners[network_name] = []
 
                 channel_listeners[network_name].push(callback)
+            },
+            send(msg) {
+                channel.send(JSON.stringify(msg))
             }
         }
     }
@@ -173,9 +174,19 @@ async function Game_Loop() {
     //FIXME: wait for ui scripts to finish on all clients
     console.log("All client ui scripts done!")
 
-    Object.values(global.users_connections).forEach(s => {
+    const incoming_messages = {}
+    Object.keys(users_connections).forEach(user => {
+        incoming_messages[user] = []
+    })
+    Object.entries(global.users_connections).forEach(([user, s]) => {
         s.channel.onclose = (e) => {
-            console.error("closed", e)
+            console.error(user, "channel closed:", e)
+        }
+        s.channel.onmessage = (msg) => {
+            if (msg.type == "message") {
+                const data = JSON.parse(msg.data)
+                incoming_messages[user] = data
+            }
         }
     })
 
@@ -183,6 +194,14 @@ async function Game_Loop() {
     const internal_tick = async () => {
         const tick_start = Date.now()
         global.tick_index += 1
+        // handle incoming messages
+        try {
+            
+        }
+        catch (e) {
+            console.log("Error while handling incoming messages:", e)
+        }
+        // run the tick function
         try {
             for (var script of Object.values(scripts)) {
                 if (typeof script.tick == "function") {
@@ -191,8 +210,9 @@ async function Game_Loop() {
             }
         }
         catch (e) {
-            console.log(e)
+            console.log("Error in tick:", e)
         }
+        // send outgoing messages
         try {
             const message = {}
             for (var handler of global.network_handlers) {
@@ -248,7 +268,7 @@ async function Connect_To_User(user_id, socket) {
     users_connections[user_id].pc = pc
 
     const channel = pc.createDataChannel("data");
-    channel.addEventListener("message", Handle_RTC_Data)
+    //channel.addEventListener("message", Handle_RTC_Data)
     users_connections[user_id].channel = channel;
 
     pc.oniceconnectionstatechange = () => {
@@ -349,10 +369,40 @@ function start({ ip, port }) {
     })
 }
 
+function Host_Client() {
+    const server = http.createServer((req, res) => {
+        if (req.url === '/' || req.url === '/index.html') {
+            const filePath = path.join(__dirname, '../dist/client.html');
+
+            fs.readFile(filePath, (err, data) => {
+                if (err) {
+                    res.writeHead(500, { 'Content-Type': 'text/plain' });
+                    res.end('Server error');
+                    return;
+                }
+
+                res.writeHead(200, { 'Content-Type': 'text/html' });
+                res.end(data); // raw HTML, no transformation
+            });
+        } else {
+            res.writeHead(404, { 'Content-Type': 'text/plain' });
+            res.end('Not found');
+        }
+    });
+
+    server.listen(3000, '0.0.0.0', () => console.log('Server listening on http://127.0.0.1:3000'));
+}
+
 global.Game_Settings = {
     start_counter:10,
     tick_rate:10
 }
+
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+})
+rl.question("Host client? (Y/n): ", (answer) => answer.toLowerCase() != "n" && Host_Client());
 
 //Game_Loop()
 //    .catch(e => console.error(e))

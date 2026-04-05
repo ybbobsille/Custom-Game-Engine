@@ -73,22 +73,23 @@ class Color {
             }
         }
         else {
-            this._filter[name] = value
+            this._filter[name] = {
+                value,
+                z
+            }
         }
 
-        const f = [[], [], [], []]
-        for (var [name, value] of Object.entries(this._filter)) {
-            f[0].push(value.r)
-            f[1].push(value.g)
-            f[2].push(value.b)
-            f[3].push(value.a)
+        const values = Object.values(this._filter).sort((a, b) => a.z - b.z).map(c => c.value.rgba)
+        var [ r,g,b,a ] = [0,0,0,0]
+        for (var [ _r,_g,_b,_a ] of values) {
+            r = this._Apply_Filter(r, _r)
+            g = this._Apply_Filter(g, _g)
+            b = this._Apply_Filter(b, _b)
+            a = this._Apply_Filter(a, _a)
         }
 
         this.filter = {
-            r: engine.Average(f[0]),
-            g: engine.Average(f[1]),
-            b: engine.Average(f[2]),
-            a: engine.Average(f[3])
+            r, g, b, a
         }
     }
 
