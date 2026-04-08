@@ -463,14 +463,14 @@ const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
 })
-rl.question("Host client? (Y/n): ", (answer) => answer.toLowerCase() != "n" && Host_Client());
+//rl.question("Host client? (Y/n): ", (answer) => answer.toLowerCase() != "n" && Host_Client());
 
 //Game_Loop()
 //    .catch(e => console.error(e))
 start({
-    ip: "custom-game-engine-production.up.railway.app",
-    port: 8080,
-    auth: ""
+    ip: "mainline.proxy.rlwy.net",
+    port: 43725,
+    auth: "eiheiolrxc"
 })
 //start(Handle_Answer("Y3VzdG9tLWdhbWUtZW5naW5lLXByb2R1Y3Rpb24udXAucmFpbHdheS5hcHA6ODA4MDpjbmZzZG5ydGJw"))
 //const rl = readline.createInterface({
