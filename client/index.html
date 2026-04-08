@@ -6,6 +6,7 @@
     <button id="connectBtn" onclick="Connect(document.querySelector('#Connection_Code').value)">Connect</button>
     <input type="text" id="Room_Code" placeholder="Input Room Code...">
     <button id="JoinBtn" onclick="Join_Lobby(document.querySelector('#Room_Code').value)">Join</button>
+    <button id="JoinBtn" onclick="window.socket.send(JSON.stringify({_TEMP_start_room: window.room}))">Start</button>
     <textarea id="log" rows="10" cols="50"></textarea>
     <textarea id="RTClog" rows="10" cols="50"></textarea>
     <div id="State"></div>

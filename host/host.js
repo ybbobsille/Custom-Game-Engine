@@ -2,6 +2,7 @@ import wrtc from "@roamhq/wrtc";
 import readline from "node:readline";
 import { WebSocket } from "ws";
 import fs from "node:fs";
+import Ui_Setup from "./Ui_Setup.js";
 
 var Base64 = {
     ALPHA: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/',
@@ -34,83 +35,57 @@ var Base64 = {
 var room_id = null
 const users = []
 const users_connections = {}
+const file_buffer = {}
+const real_time = {}
 
-function Ui_Setup(ui_scripts) {
-    // this function will run on the client and will setup the system to allow each script to use there own scripts.
-    // the reason i do it this way is to alow old clients to load new games.
-    console.log("running Ui_Setup...")
+function Buffer_File(fp) {
+    if (file_buffer[fp]) {
+        return file_buffer[fp]
+    }
 
-    Object.entries(ui_scripts).forEach(([module_name, func]) => {
-        ui_scripts[module_name] = Get_Function_From_String(func)
-    })
-    const RTC = globalThis.pc
-    const channel = globalThis.channel
+    const bytes = fs.readFileSync(fp)
+    file_buffer[fp] = bytes.toString('base64')
+    return file_buffer[fp]
+}
 
-    const channel_listeners = {}
+function Set_Real_Time(name, x, y, vx, vy, options) {
+    real_time[name] = {
+        x: x,
+        y: y,
+        vx: vx,
+        vy: vy,
+        options: options,
+        time: Date.now()
+    }
+}
 
-    channel.onmessage = (event) => {
-        const data = JSON.parse(event.data)
-        for (var network_name of Object.keys(data)) {
-            if (!channel_listeners[network_name]) continue
+function Get_Real_Time() {
+    const final = {}
 
-            data[network_name].forEach(msg => 
-                channel_listeners[network_name].forEach(listener => listener(msg))
-            )
+    for (var [rt_object, { x, y, vx, vy, options, time }] of Object.entries(real_time)) {
+        const delta = Date.now() - time
+        if (delta > global.Game_Settings.real_time_timeout) {
+            delete real_time[rt_object]
+            continue
+        }
+
+        final[rt_object] = {
+            x: x + vx,
+            y: y + vy - (options.gravity || 0)
         }
     }
 
-    document.body.innerHTML = `
-    <style>
-    body {
-        margin: 0;
-        background-color: black;
-    }
+    return final
+}
 
-    canvas {
-        border: 2px solid black;
-        height: 100vh;
-        aspect-ratio: 1/1;
-        image-rendering: pixelated;
-    }
-    </style>
-
-    <canvas width="500" height="500">
-    </canvas>
-    `
-
-    const canvas = document.querySelector("canvas")
-    const ctx = canvas.getContext("2d")
-
-    const handler = {
-        renderer: {
-            Set_Pixel(x, y, r, g, b) {
-                handler.renderer.Set_Square(x,y,1,1,r,g,b)
-            },
-            Set_Square(x,y,w,h,r,g,b) {
-                ctx.fillStyle = `rgb(${[r,g,b].join(",")})`
-                ctx.fillRect(y,x,w,h)
-                ctx.stroke()
-            },
-            Size(x,y) {
-                canvas.height = y
-                canvas.width = x
-            }
-        },
-        network: {
-            on_message(network_name, callback) {
-                if (!channel_listeners[network_name]) channel_listeners[network_name] = []
-
-                channel_listeners[network_name].push(callback)
-            },
-            send(msg) {
-                channel.send(JSON.stringify(msg))
-            }
+function isEmpty(obj) {
+    for (const prop in obj) {
+        if (Object.hasOwn(obj, prop)) {
+            return false;
         }
     }
 
-    Object.values(ui_scripts).forEach(script => {
-        script(handler)
-    })
+    return true;
 }
 
 async function Game_Loop() {
@@ -120,11 +95,13 @@ async function Game_Loop() {
     global.users_connections = users_connections
     global.engine_store = {}
     global.network_handlers = []
+    global.sprites = {}
     console.log("Loading scripts...")
     var files = fs.readdirSync("./scripts")
     console.log("Scripts found:", files.join(", "))
     var scripts = []
     for (var file of files) {
+        if (!file.endsWith(".js")) continue
         const fp = "./scripts/" + file
         const module = await import(fp);
         console.log("Loaded:", fp);
@@ -161,11 +138,12 @@ async function Game_Loop() {
     console.log("All ui scripts loaded!")
 
     console.log("Sending players ui scripts...")
-    Object.values(users_connections).forEach( user => {
+    Object.values(users_connections).forEach(user => {
         user.channel.send(JSON.stringify({
-            Game_Start:true,
+            Game_Start: true,
             Setup: Ui_Setup.toString(),
-            Scripts: ui_scripts
+            Scripts: ui_scripts,
+            ping_frequency: global.Game_Settings.ping_frequency
         }))
     })
     console.log("Sent all ui scripts!")
@@ -175,20 +153,60 @@ async function Game_Loop() {
     console.log("All client ui scripts done!")
 
     const incoming_messages = {}
+    const outgoing_images = {}
+    var ping_data = {}
     Object.keys(users_connections).forEach(user => {
         incoming_messages[user] = []
+        outgoing_images[user] = []
     })
     Object.entries(global.users_connections).forEach(([user, s]) => {
-        s.channel.onclose = (e) => {
-            console.error(user, "channel closed:", e)
+        s.channel.onclose = async (e) => {
+            console.log(`User ${user} has disconnected!`)
+            delete global.users_connections[user]
+            if (global.Game_Settings.close_on_no_users && isEmpty(global.users_connections)) {
+                console.log("All users disconnected! Calling close functions...")
+                clearInterval(tick)
+
+                try {
+                    for (var script of Object.values(scripts)) {
+                        if (typeof script.close == "function") {
+                            await script.close()
+                        }
+                    }
+                    console.log("All close functions complete! Closing...")
+                }
+                catch (e) {
+                    console.log("Error in close:", e)
+                }
+
+                process.exit()
+            }
         }
         s.channel.onmessage = (msg) => {
             if (msg.type == "message") {
                 const data = JSON.parse(msg.data)
-                incoming_messages[user] = data
+                switch (data.type) {
+                    case "message":
+                        incoming_messages[user].push({ data: data.data, network: data.network_name })
+                        break
+                    case "image_request":
+                        outgoing_images[user].push(data.sprite_id)
+                        break
+                    case "real_time":
+                        Set_Real_Time(data.name, data.x, data.y, data.vx, data.vy, data.options)
+                        break
+                    case "ping":
+                        ping_data[user] = Date.now() - data.timestamp
+                        break
+                }
             }
         }
     })
+
+    var ping_with_next_message = false
+    if (global.Game_Settings.ping_frequency >= 0) {
+        setInterval(() => { ping_with_next_message = true }, global.Game_Settings.ping_frequency)
+    }
 
     console.log("Entered pre-game state...")
     const internal_tick = async () => {
@@ -196,7 +214,15 @@ async function Game_Loop() {
         global.tick_index += 1
         // handle incoming messages
         try {
-            
+            for (var [uid, messages] of Object.entries(incoming_messages)) {
+                for (var message of messages) {
+                    for (var handler of global.network_handlers) {
+                        handler._Handle_Message(uid, message)
+                    }
+                }
+
+                incoming_messages[uid] = []
+            }
         }
         catch (e) {
             console.log("Error while handling incoming messages:", e)
@@ -217,7 +243,7 @@ async function Game_Loop() {
             const message = {}
             for (var handler of global.network_handlers) {
                 if (!handler.network_name) continue // handler is yet to send a message
-                
+
                 for (var uid of Object.keys(handler._message_buffer)) {
                     if (!message[uid]) message[uid] = {}
 
@@ -225,12 +251,44 @@ async function Game_Loop() {
                 }
                 handler._message_buffer = {}
             }
+            for (var [uid, images] of Object.entries(outgoing_images)) {
+                if (images.length == 0) continue
+                if (!message[uid]) message[uid] = {}
+                message[uid].__images__ = {}
+
+                for (var image of images) {
+                    if (!global.sprites[image]) {
+                        console.log(`User requested unknown sprite '${image}'`)
+                        continue
+                    }
+                    message[uid].__images__[image] = Buffer_File(global.sprites[image])
+                }
+
+                outgoing_images[uid] = []
+            }
+
+            if (global.Game_Settings.real_time) {
+                const real_time = Get_Real_Time()
+                for (var user of Object.keys(global.users_connections)) {
+                    if (!message[user]) message[user] = {}
+                    message[user].__real_time__ = real_time
+                }
+            }
+
+            if (ping_with_next_message) {
+                ping_with_next_message = false
+                for (var user of Object.keys(global.users_connections)) {
+                    if (!message[user]) message[user] = {}
+                    message[user].__ping__ = ping_data
+                }
+            }
 
             for (var uid of Object.keys(message)) {
                 const data = message[uid]
                 const socket = global.users_connections[uid]
                 if (!socket) {
-                    console.warn("Unknown user id of", uid, "Available user ids include:", Object.keys(global.users_connections).join(", "))
+                    continue
+                    //console.warn("Unknown user id of", uid, "Available user ids include:", Object.keys(global.users_connections).join(", "))
                 }
                 try {
                     socket.channel.send(JSON.stringify(data))
@@ -253,56 +311,52 @@ async function Game_Loop() {
     }, global.Game_Settings.start_counter * 1000)
 }
 
-async function Handle_RTC_Data(event) {
-    console.log(event.data)
-}
-
 async function Connect_To_User(user_id, socket) {
     users_connections[user_id] = {
-        status:false
+        status: false
     }
     const pc = new wrtc.RTCPeerConnection({
-      iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+        iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
     });
     global.pc = pc
     users_connections[user_id].pc = pc
 
     const channel = pc.createDataChannel("data");
-    //channel.addEventListener("message", Handle_RTC_Data)
     users_connections[user_id].channel = channel;
 
     pc.oniceconnectionstatechange = () => {
-      users_connections[user_id].status = pc.iceConnectionState == "completed"
+        if (!users_connections[user_id]) return
+        users_connections[user_id].status = pc.iceConnectionState == "completed"
 
-      if (pc.iceConnectionState == "completed") {
-        socket.close()
-        console.log("Player", user_id, "is ready!")
-      }
+        if (pc.iceConnectionState == "completed") {
+            socket.close()
+            console.log("Player", user_id, "is ready!")
+        }
     }
 
     pc.onicecandidate = (event) => {
-      if (event.candidate) {
-        socket.send(JSON.stringify({
-          bypass:{
-            RTC: {
-                candidate: event.candidate
-            }
-          },
-          user_id:user_id
-        }));
-      }
+        if (event.candidate) {
+            socket.send(JSON.stringify({
+                bypass: {
+                    RTC: {
+                        candidate: event.candidate
+                    }
+                },
+                user_id: user_id
+            }));
+        }
     };
 
     socket.on("message", async (data) => {
         const msg = JSON.parse(data)
-        
+
         if (msg.RTC && msg.user_id == user_id) {
             if (msg.RTC.answer) {
                 await pc.setRemoteDescription(msg.RTC.answer);
                 console.log("Answer applied for", user_id);
             }
             if (msg.RTC.candidate) {
-              await pc.addIceCandidate(msg.RTC.candidate);
+                await pc.addIceCandidate(msg.RTC.candidate);
             }
         }
     })
@@ -310,30 +364,33 @@ async function Connect_To_User(user_id, socket) {
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
     socket.send(JSON.stringify({
-        bypass:{
-            room_start:true
+        bypass: {
+            room_start: true
         },
-        user_id:user_id
+        user_id: user_id
     }))
     socket.send(JSON.stringify({
-        bypass:{
-            RTC:{
-                offer:offer
+        bypass: {
+            RTC: {
+                offer: offer
             }
         },
-        user_id:user_id
+        user_id: user_id
     }))
 }
 
 function Handle_Answer(code) {
-    const ip = code.split("_")[0].split("-").map(p => Base64.decode(p)).join(".")
-    const port = code.split("_")[1].split("").map(p => Base64.decode(p)).join("")
-    return { ip, port }
+    // Decode the Base64 string back into the combined format
+    const decodedString = atob(code);
+    // Split the string into components using ':' as a separator
+    const [ip, port, auth] = decodedString.split(':');
+
+    return { ip, port, auth }
 }
 
-function start({ ip, port }) {
+function start({ ip, port, auth }) {
     console.log(`Connecting to ${ip}:${port}`)
-    const socket = new WebSocket(`ws:${ip}:${port}`)
+    const socket = new WebSocket(`ws:${ip}:${port}?auth=${auth}`)
     const Start_Game = () => {
         console.log("Starting game...")
         users.forEach(user_id => {
@@ -353,7 +410,7 @@ function start({ ip, port }) {
             users.push(msg.user_joined)
 
             //FIXME: temp
-            Start_Game()
+            //Start_Game()
         }
         if (msg.host_confirmed) {
             console.log("Hosting game with room id:", msg.host_confirmed)
@@ -394,8 +451,12 @@ function Host_Client() {
 }
 
 global.Game_Settings = {
-    start_counter:10,
-    tick_rate:10
+    start_counter: 0,
+    tick_rate: 30,
+    real_time: true,
+    real_time_timeout: 5000,
+    close_on_no_users: true,
+    ping_frequency: 500
 }
 
 const rl = readline.createInterface({
@@ -406,7 +467,7 @@ rl.question("Host client? (Y/n): ", (answer) => answer.toLowerCase() != "n" && H
 
 //Game_Loop()
 //    .catch(e => console.error(e))
-start(Handle_Answer("B/-A-A-B_IAIA"))
+start(Handle_Answer("MTI3LjAuMC4xOjgwODA6eGptYmx1b3dkdg=="))
 //const rl = readline.createInterface({
 //    input: process.stdin,
 //    output: process.stdout,

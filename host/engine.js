@@ -193,6 +193,8 @@ class Network_Handler {
     }
     network_name = null
 
+    listeners = []
+
     constructor(users) {
         this.users = users
         global.network_handlers.push(this)
@@ -217,8 +219,30 @@ class Network_Handler {
         this._message_buffer[user].push(data)
     }
 
-    On_Message(callback) {
+    On_Message(network_name, callback) {
+        const index = this.listeners.length
+        this.listeners.push({_network: network_name, _callback: callback})
+        return index
+    }
 
+    On_User_Message(network_name, uid, callback) {
+        const index = this.listeners.length
+        this.listeners.push({_network: network_name, _callback: callback, _uid: uid})
+        return index
+    }
+
+    _Handle_Message(uid, { data, network }) {
+        for (var { _network, _uid, _callback } of this.listeners) {
+            if (_uid && _uid != uid) continue
+            if (network != _network) continue
+
+            if (_uid) {
+                _callback(data)
+            }
+            else {
+                _callback(uid, data)
+            }
+        }
     }
 }
 
@@ -240,6 +264,12 @@ const engine = {
 
     public: {
         // put any values you wish to share with other packages here
+    },
+
+    sprites: {
+        Register_New(sprite_id, fp) {
+            global.sprites[sprite_id] = fp
+        }
     },
 
     Vcheck: (expected, terminal = true) => {

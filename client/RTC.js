@@ -5,12 +5,12 @@ function Get_Function_From_String(func_string) {
 }
 
 async function Handle_Game_Init(event) {
-  RTC_log(event.data)
-  const data = JSON.parse(event.data)
+    RTC_log(event.data)
+    const data = JSON.parse(event.data)
 
-  if (data.Game_Start) {
-    Get_Function_From_String(data.Setup)(data.Scripts)
-  }
+    if (data.Game_Start) {
+        Get_Function_From_String(data.Setup)(data.Scripts, data.ping_frequency)
+    }
 }
 
 async function Connect_To_Host(socket) {

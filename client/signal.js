@@ -39,14 +39,21 @@ function Join_Lobby(code) {
     socket.send(JSON.stringify({user_join_room: code}))
 }
 
-function Connect(code) {
+function decodeConnectionInfo(encodedString) {
+    // Decode the Base64 string back into the combined format
+    const decodedString = atob(encodedString);
+    // Split the string into components using ':' as a separator
+    const [ip, port, auth] = decodedString.split(':');
+    // Return the decoded components
+    return { ip, port, auth };
+}
 
-    const ip = code.split("_")[0].split("-").map(p => Base64.decode(p)).join(".")
-    const port = code.split("_")[1].split("").map(p => Base64.decode(p)).join("")
+function Connect(code) {
+    const {ip, port, auth} = decodeConnectionInfo(code)
 
     log(`Connecting to Ip: ${ip}:${port}`)
 
-    const socket = new WebSocket(`ws://${ip}:${port}`);
+    const socket = new WebSocket(`ws://${ip}:${port}?auth=${auth}`);
     window.socket = socket
 
     socket.onmessage = async (event) => {
@@ -69,7 +76,10 @@ function Connect(code) {
 
 const state_update = setInterval(() => {
     const state = document.getElementById("State")
-    if (!state) clearInterval(state_update)
+    if (!state) {
+        clearInterval(state_update)
+        return 
+    }
     state.innerHTML = `
     Status:
     Signal socket: ${window.socket?.readyState}
