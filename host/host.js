@@ -467,7 +467,12 @@ rl.question("Host client? (Y/n): ", (answer) => answer.toLowerCase() != "n" && H
 
 //Game_Loop()
 //    .catch(e => console.error(e))
-start(Handle_Answer("MmEwZWFkMzEtOTAzYi00YzBmLTkzZDctOTBlNDA0MGY3YWMwLnVwLnJhaWx3YXkuYXBwOjgwODA6bGR0d25tY3JrbQ=="))
+start({
+    ip: "custom-game-engine-production.up.railway.app",
+    port: 8080,
+    auth: ""
+})
+//start(Handle_Answer("Y3VzdG9tLWdhbWUtZW5naW5lLXByb2R1Y3Rpb24udXAucmFpbHdheS5hcHA6ODA4MDpjbmZzZG5ydGJw"))
 //const rl = readline.createInterface({
 //    input: process.stdin,
 //    output: process.stdout,

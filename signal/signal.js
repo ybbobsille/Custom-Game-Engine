@@ -56,6 +56,7 @@ function encodeConnectionInfo(ip, port, authCodeBase64) {
 
 function start(ip) {
     const auth = Generate_Auth_Id()
+    console.log(`Auth: ${auth}`)
 
     console.log(`\n\n\n\n\nConnection code: ${encodeConnectionInfo(ip, port, auth)}`)
 
