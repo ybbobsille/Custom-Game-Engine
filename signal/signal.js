@@ -164,4 +164,4 @@ function Find_Ip() {
 }
 
 //start(Handle_Answer("127.0.0.1"))
-start(Handle_Answer(Find_Ip()))
+start(Find_Ip())
