@@ -52,7 +52,7 @@ function Handle_Answer(answer) {
 }
 
 function encodeConnectionInfo(ip, port, authCodeBase64) {
-    return btoa(`${ip}:${railway ? port : 43725}:${authCodeBase64}`);
+    return btoa(`${ip}:${railway ? 43725 : port}:${authCodeBase64}`);
 }
 
 function start(ip) {
