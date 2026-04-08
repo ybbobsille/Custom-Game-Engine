@@ -1,7 +1,7 @@
 import { WebSocketServer } from "ws";
 import url from "url";
 
-const port = process.env.PORT
+const port = process.env.PORT || 8080
 const hosts = new Map()
 const users = new Map()
 const user_sockets = new Map()
@@ -160,7 +160,7 @@ function start(ip) {
 }
 
 function Find_Ip() {
-    return "2a0ead31-903b-4c0f-93d7-90e4040f7ac0.up.railway.app"
+    return "custom-game-engine-production.up.railway.app"
 }
 
 //start(Handle_Answer("127.0.0.1"))
