@@ -1,0 +1,14 @@
+{
+    "network": {
+        "ip": "127.0.0.1",
+        "port": 8080,
+        "auth": "oiihukaotw"
+    },
+    "game": {
+        "tick_rate": 30,
+        "real_time": true,
+        "real_time_timeout": 5000,
+        "close_on_no_users": true,
+        "ping_frequency": 500
+    }
+}

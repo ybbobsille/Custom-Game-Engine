@@ -7,7 +7,7 @@
     "signal": "node signal/signal.js",
     "start": "node signal/signal.js",
     "build-client": "inliner client/index.html > dist/client.html",
-    "fg_host":"cd host && clinic flame -- node host.js"
+    "fg_host": "cd host && clinic flame -- node host.js"
   },
   "author": "",
   "license": "ISC",

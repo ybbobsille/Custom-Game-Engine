@@ -15,7 +15,7 @@ export default function Ui_Setup(ui_scripts, ping_frequency = -1) {
     var real_time_objects = {}
     var ping_data = {}
 
-    channel.onmessage = (event) => {
+    const handle_message = (event) => {
         const data = JSON.parse(event.data)
         for (var network_name of Object.keys(data)) {
             if (network_name == "__images__") {
@@ -34,6 +34,16 @@ export default function Ui_Setup(ui_scripts, ping_frequency = -1) {
                 ping_data = data[network_name]
                 continue
             }
+            else if (network_name == "__catch_up__") {
+                for (var msg of data[network_name]) {
+                    handle_message({
+                        data: JSON.stringify({
+                            [msg.network_name]: [msg.msg]
+                        })
+                    })
+                }
+                continue
+            }
             if (!channel_listeners[network_name]) continue
 
             data[network_name].forEach(msg =>
@@ -41,6 +51,8 @@ export default function Ui_Setup(ui_scripts, ping_frequency = -1) {
             )
         }
     }
+
+    channel.onmessage = handle_message
 
     if (ping_frequency != -1) {
         setInterval(() => {
@@ -688,9 +700,9 @@ export default function Ui_Setup(ui_scripts, ping_frequency = -1) {
                         const renderer = handler.renderer.adv
                         if (type == handler.renderer.text.Text_Type.small) {
                             // dot
-                            renderer.Set_Pixel(x + 2, y    , r, g, b)
+                            renderer.Set_Pixel(x + 2, y, r, g, b)
                             renderer.Set_Pixel(x + 1, y + 1, r, g, b)
-                            renderer.Set_Pixel(x    , y + 2, r, g, b)
+                            renderer.Set_Pixel(x, y + 2, r, g, b)
                             renderer.Set_Pixel(x + 1, y + 3, r, g, b)
                             renderer.Set_Pixel(x + 2, y + 4, r, g, b)
                         }
@@ -699,11 +711,11 @@ export default function Ui_Setup(ui_scripts, ping_frequency = -1) {
                         const renderer = handler.renderer.adv
                         if (type == handler.renderer.text.Text_Type.small) {
                             // dot
-                            renderer.Set_Pixel(x    , y    , r, g, b)
+                            renderer.Set_Pixel(x, y, r, g, b)
                             renderer.Set_Pixel(x + 1, y + 1, r, g, b)
                             renderer.Set_Pixel(x + 2, y + 2, r, g, b)
                             renderer.Set_Pixel(x + 1, y + 3, r, g, b)
-                            renderer.Set_Pixel(x    , y + 4, r, g, b)
+                            renderer.Set_Pixel(x, y + 4, r, g, b)
                         }
                     }
                 },

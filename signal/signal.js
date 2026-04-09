@@ -1,8 +1,7 @@
 import { WebSocketServer } from "ws";
 import url from "url";
 
-const railway = true
-const port = 8080 
+const port = 8080
 const hosts = new Map()
 const users = new Map()
 const user_sockets = new Map()
@@ -52,7 +51,7 @@ function Handle_Answer(answer) {
 }
 
 function encodeConnectionInfo(ip, port, authCodeBase64) {
-    return btoa(`${ip}:${railway ? 43725 : port}:${authCodeBase64}`);
+    return btoa(`${ip}:${port}:${authCodeBase64}`);
 }
 
 function start(ip) {
@@ -162,7 +161,7 @@ function start(ip) {
 }
 
 function Find_Ip() {
-    return railway ? "mainline.proxy.rlwy.net" : "127.0.0.1"
+    return "127.0.0.1"
 }
 
 //start(Handle_Answer("127.0.0.1"))

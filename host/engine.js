@@ -191,6 +191,7 @@ class Network_Handler {
     _message_buffer = {
 
     }
+    _perminant_buffer = []
     network_name = null
 
     listeners = []
@@ -200,7 +201,20 @@ class Network_Handler {
         global.network_handlers.push(this)
     }
 
-    Send_All(data) {
+    Send_All(data, buffer = false) {
+        if (!engine.network_name) {
+            throw "engine.network_name is null, Please set this to a uniqe id."
+        }
+        this.network_name = engine.network_name
+
+        if (buffer) {
+            this._perminant_buffer.push({
+                msg: data,
+                t: Date.now(),
+                network_name: this.network_name
+            })
+        }
+
         this.users.forEach(user => {
             this.Send_User(data, user)
         })
@@ -259,7 +273,7 @@ const engine = {
     game_settings: {
     },
     tick_rate: 0,
-    network: new Network_Handler(Object.keys(global.users_connections)),
+    network: new Network_Handler(global.user_ids),
     network_name: null,
 
     public: {

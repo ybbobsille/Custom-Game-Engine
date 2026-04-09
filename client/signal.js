@@ -53,6 +53,8 @@ function Connect(code) {
 
     log(`Connecting to Ip: ${ip}:${port}`)
 
+    window.url_base = `${ip}:${port}`
+
     const socket = new WebSocket(`ws://${ip}:${port}?auth=${auth}`);
     window.socket = socket
 
