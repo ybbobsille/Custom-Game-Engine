@@ -4,6 +4,13 @@ import { WebSocket } from "ws";
 var user_ids = []
 var user_connections = {}
 
+function encodeConnectionInfo(room_code) {
+    return btoa(`${global._network_settings.ip
+        }:${global._network_settings.port
+        }:${global._network_settings.auth
+        }:${room_code}`);
+}
+
 class User_Connection {
     uid;
     connected = false;
@@ -177,6 +184,8 @@ class Signal_Handler {
                 if (this.Registered == true) {
                     clearInterval(interval)
                     global.Network_Log(`Hosting game with room id: ${this.Host_Id}`)
+
+                    global.Backend_Log(`Connection code: ${encodeConnectionInfo(this.Host_Id)}`)
                     resolve()
                 }
                 else if (this.Registered != false) {

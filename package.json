@@ -9,7 +9,7 @@
     "build-client": "inliner client/index.html > dist/client.html",
     "fg_host": "cd host && clinic flame -- node host.js"
   },
-  "author": "",
+  "author": "ybbobsille",
   "license": "ISC",
   "description": "",
   "dependencies": {

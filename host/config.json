@@ -1,8 +1,8 @@
 {
     "network": {
-        "ip": "127.0.0.1",
-        "port": 8080,
-        "auth": "oiihukaotw"
+        "ip": "nozomi.proxy.rlwy.net",
+        "port": 31630,
+        "auth": "bkxivhsjy"
     },
     "game": {
         "tick_rate": 30,

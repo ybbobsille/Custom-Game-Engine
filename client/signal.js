@@ -43,13 +43,13 @@ function decodeConnectionInfo(encodedString) {
     // Decode the Base64 string back into the combined format
     const decodedString = atob(encodedString);
     // Split the string into components using ':' as a separator
-    const [ip, port, auth] = decodedString.split(':');
+    const [ip, port, auth, room_code] = decodedString.split(':');
     // Return the decoded components
-    return { ip, port, auth };
+    return { ip, port, auth, room_code };
 }
 
 function Connect(code) {
-    const {ip, port, auth} = decodeConnectionInfo(code)
+    const {ip, port, auth, room_code} = decodeConnectionInfo(code)
 
     log(`Connecting to Ip: ${ip}:${port}`)
 
@@ -66,6 +66,7 @@ function Connect(code) {
         }
         if (msg.user_confitmed) {
             window.user_id = msg.user_confitmed
+            Join_Lobby(room_code)
         }
 
         log("incoming messsage: " + JSON.stringify(msg))
