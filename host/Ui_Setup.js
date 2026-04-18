@@ -127,7 +127,8 @@ export default function Ui_Setup(ui_scripts, ping_frequency = -1) {
         a: "KeyA",
         d: "KeyD",
         slash: "Slash",
-        enter: "Enter"
+        enter: "Enter",
+        l: "KeyL"
     })
 
     const input_map = {}

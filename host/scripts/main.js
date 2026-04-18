@@ -6,11 +6,9 @@ engine.Vcheck("1.0.0")
 var users = {}
 var chat_messages = []
 
-function Add_User(username, uid) {
-    users[uid] = username
-
+function Update_Users() {
     engine.network.Send_All({
-        type: "users_added",
+        type: "users_update",
         users: users
     })
 }
@@ -28,6 +26,11 @@ function Add_Chat_Message(owner, message) {
     })
 }
 
+export function On_User_Leave(uid) {
+    delete users[uid]
+    Update_Users()
+}
+
 export async function init() {
     engine.sprites.Register_New("character", "scripts/sprites/test.png")
 
@@ -38,7 +41,9 @@ export async function init() {
     engine.network.On_Message(engine.network_name, (user, msg) => {
         switch (msg.type) {
             case "ready":
-                Add_User(msg.username, user)
+                users[user] = msg.username
+                Update_Users()
+                Add_Chat_Message("game", `${msg.username} joined the game`)
                 break
             case "chat":
                 Add_Chat_Message(user, msg.msg)
@@ -64,9 +69,13 @@ export async function ui_script(handler) {
     const target_step = 16 // ~60 fps
     var users = null
     var chat_data = []
+    var joined
+    var logs = ""
+    var saved_logs = false
 
     const chat_user_color = [0, 255, 0]
     const chat_text_color = [255, 255, 255]
+    const chat_game_color = [0, 0, 255]
     const chat_text_type = handler.renderer.text.Text_Type.small
 
     //char data
@@ -75,6 +84,18 @@ export async function ui_script(handler) {
     var my_username = null
     var grounded = false
     var in_menu = false
+
+    function saveTextFile(filename, text) {
+        const blob = new Blob([text], { type: "text/plain" });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.click();
+
+        URL.revokeObjectURL(url);
+    }
 
     async function Loading(message, promise) {
         var period_count = 1
@@ -114,6 +135,7 @@ export async function ui_script(handler) {
             handler.input.track(Keycode.space)
             handler.input.track(Keycode.slash)
             handler.input.track(Keycode.enter)
+            handler.input.track(Keycode.l)
 
             await handler.sprites.Preload("character")
         }
@@ -193,6 +215,7 @@ export async function ui_script(handler) {
 
     async function Main(username) {
         my_username = username
+        joined = Date.now()
         setInterval(Tick, target_step)
         setInterval(() => {
             handler.network.real_time.Set(handler.uid, my_position.x, my_position.y, my_velocity.x, my_velocity.y)
@@ -255,10 +278,10 @@ export async function ui_script(handler) {
 
     function Display_Chat() {
         const _text = handler.renderer.text
-        var position = {x: 20, y: 20}
+        var position = { x: 20, y: 20 }
         for (var [owner, message] of chat_data) {
-            const x = _text.Render(`<${users[owner]}> `, position.x, position.y, chat_text_type, ...chat_user_color).x
-            position.y = _text.Render(`${message}\n`, x, position.y, chat_text_type, ...chat_text_color).y + 5
+            const x = _text.Render(`<${users[owner]}> `, position.x, position.y, chat_text_type, ...(owner == "game" ? chat_game_color : chat_user_color)).x
+            position.y = _text.Render(`${message}\n`, x, position.y, chat_text_type, ...(owner == "game" ? chat_game_color : chat_text_color)).y + 5
         }
     }
 
@@ -296,11 +319,16 @@ export async function ui_script(handler) {
             my_velocity.y = 0
         }
 
-        Render_Character(my_username, my_position, 0)
+        Render_Character(my_username, my_position, handler.network.ping_user(uid))
         //#endregion
 
         //#region chat
         Display_Chat()
+
+        if (Date.now() - joined < 10000) {
+            handler.renderer.text.Center("press forward slash to chat",
+                350, 100, handler.renderer.text.Text_Type.small)
+        }
 
         if (handler.input.keyheld(Keycode.slash) && !in_menu) {
             in_menu = true
@@ -317,7 +345,7 @@ export async function ui_script(handler) {
                 if (handler.input.keyheld(Keycode.enter)) {
                     clearInterval(interval)
                     handler.DOM.removeChild(menu)
-                    
+
                     in_menu = false
 
                     handler.network.send({
@@ -329,6 +357,14 @@ export async function ui_script(handler) {
             const interval = setInterval(check, 5)
 
             handler.DOM.appendChild(menu)
+            menu.focus()
+        }
+        //#endregion
+
+        //#region logs
+        if (handler.input.keyheld(Keycode.l) && !saved_logs) {
+            saveTextFile(`${handler.uid}_logs.txt`, logs)
+            saved_logs = true
         }
         //#endregion
     }
@@ -338,7 +374,7 @@ export async function ui_script(handler) {
             case "init":
                 Init()
                 break
-            case "users_added":
+            case "users_update":
                 users = msg.users
                 break
             case "chat_update":

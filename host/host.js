@@ -26,20 +26,25 @@ function Set_Real_Time(name, x, y, vx, vy, options) {
     }
 }
 
+function Get_Real_Time_Object(name) {
+    var { x, y, vx, vy, options, time } = real_time[name]
+    const delta = Date.now() - time
+    if (delta > global.Game_Settings.real_time_timeout) {
+        delete real_time[rt_object]
+        return null
+    }
+
+    return {
+        x: x + vx,
+        y: y + vy - (options.gravity || 0)
+    }
+}
+
 function Get_Real_Time() {
     const final = {}
 
-    for (var [rt_object, { x, y, vx, vy, options, time }] of Object.entries(real_time)) {
-        const delta = Date.now() - time
-        if (delta > global.Game_Settings.real_time_timeout) {
-            delete real_time[rt_object]
-            continue
-        }
-
-        final[rt_object] = {
-            x: x + vx,
-            y: y + vy - (options.gravity || 0)
-        }
+    for (var rt_object of Object.keys(real_time)) {
+        final[rt_object] = Get_Real_Time_Object(rt_object)
     }
 
     return final
@@ -123,11 +128,23 @@ async function Start_Game() {
             user.Send(buffered_messages)
         }
 
+        for (var script of scripts) {
+            if (typeof script.On_User_Join == "function") {
+                await script.On_User_Join(uid)
+            }
+        }
+
         const uid = user.uid
         incoming_messages[uid] = []
         outgoing_sprites[uid] = []
 
         user.on_close = async (e) => {
+            for (var script of scripts) {
+                if (typeof script.On_User_Leave == "function") {
+                    await script.On_User_Leave(uid)
+                }
+            }
+
             if (global.Game_Settings.close_on_no_users && Networking.user_ids.length == 0) {
                 global.Backend_Log(`All users disconnected! Calling close functions...`)
 
@@ -312,11 +329,17 @@ function Load() {
     //console.log = (text) => _log(text)
 
     global.Game_Settings = config.game
-    global._network_settings = config.network
+    global._network_settings = {
+        ip: process.env.ip,
+        port: process.env.port,
+        auth: process.env.auth
+    }
     global.network_handlers = []
     global.engine_store = {}
     global.sprites = {}
     global.message_buffer = []
+    global.__set_real_time = Set_Real_Time
+    global.__get_real_time = Get_Real_Time_Object
     global.Network_Log = (text) => _log(text)
     global.Backend_Log = (text) => _log(text)
 }

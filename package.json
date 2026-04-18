@@ -2,10 +2,8 @@
   "name": "rts-game",
   "version": "1.0.0",
   "scripts": {
-    "test": "cd host && node test.js",
+    "test": "cd host && node --env-file=.env test.js",
     "host": "cd host && node host.js",
-    "signal": "node signal/signal.js",
-    "start": "node signal/signal.js",
     "build-client": "inliner client/index.html > dist/client.html",
     "fg_host": "cd host && clinic flame -- node host.js"
   },

@@ -80,8 +80,8 @@ class Color {
         }
 
         const values = Object.values(this._filter).sort((a, b) => a.z - b.z).map(c => c.value.rgba)
-        var [ r,g,b,a ] = [0,0,0,0]
-        for (var [ _r,_g,_b,_a ] of values) {
+        var [r, g, b, a] = [0, 0, 0, 0]
+        for (var [_r, _g, _b, _a] of values) {
             r = this._Apply_Filter(r, _r)
             g = this._Apply_Filter(g, _g)
             b = this._Apply_Filter(b, _b)
@@ -235,13 +235,13 @@ class Network_Handler {
 
     On_Message(network_name, callback) {
         const index = this.listeners.length
-        this.listeners.push({_network: network_name, _callback: callback})
+        this.listeners.push({ _network: network_name, _callback: callback })
         return index
     }
 
     On_User_Message(network_name, uid, callback) {
         const index = this.listeners.length
-        this.listeners.push({_network: network_name, _callback: callback, _uid: uid})
+        this.listeners.push({ _network: network_name, _callback: callback, _uid: uid })
         return index
     }
 
@@ -283,6 +283,15 @@ const engine = {
     sprites: {
         Register_New(sprite_id, fp) {
             global.sprites[sprite_id] = fp
+        }
+    },
+
+    real_time: {
+        Set(name, x, y, vx, vy, options = null) {
+            global.__set_real_time(name, x, y, vx, vy, options)
+        },
+        Get(name) {
+            return global.__get_real_time(name)
         }
     },
 
