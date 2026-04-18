@@ -128,7 +128,7 @@ async function Start_Game() {
             user.Send(buffered_messages)
         }
 
-        for (var script of scripts) {
+        for (var script of Object.values(scripts)) {
             if (typeof script.On_User_Join == "function") {
                 await script.On_User_Join(uid)
             }
@@ -139,7 +139,7 @@ async function Start_Game() {
         outgoing_sprites[uid] = []
 
         user.on_close = async (e) => {
-            for (var script of scripts) {
+            for (var script of Object.values(scripts)) {
                 if (typeof script.On_User_Leave == "function") {
                     await script.On_User_Leave(uid)
                 }
