@@ -114,7 +114,7 @@ async function Start_Game() {
     var ping_data = {}
     global.tick_index = 0
 
-    Networking.signal.on_user = (user) => {
+    Networking.signal.on_user = async (user) => {
         const buffered_messages = Get_Buffered_Messages()
         const send_buffered = !Is_Object_Empty(buffered_messages)
         global.Network_Log(`Sending user ${user.uid} init${send_buffered ? " and buffered messages" : ""}...`)
