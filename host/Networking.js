@@ -131,6 +131,7 @@ class Signal_Handler {
 
     On_Message = async (event) => {
         const msg = JSON.parse(event)
+        console.log(msg)
 
         if (msg.msg) {
             global.Network_Log(msg.msg)
@@ -167,6 +168,7 @@ class Signal_Handler {
     }
 
     Connect() {
+        console.log("Connecting...")
         this.socket = new WebSocket(`ws:${global._network_settings.ip
             }:${global._network_settings.port
             }?auth=${global._network_settings.auth
@@ -174,6 +176,7 @@ class Signal_Handler {
 
         this.socket.on("message", this.On_Message)
         this.socket.on("open", () => {
+            console.log("Connection Opened!")
             this.socket.send(JSON.stringify({
                 "register_host": true
             }))
