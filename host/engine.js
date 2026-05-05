@@ -287,11 +287,16 @@ const engine = {
     },
 
     real_time: {
-        Set(name, x, y, vx, vy, options = null) {
-            global.__set_real_time(name, x, y, vx, vy, options)
+        Set(name, x, y, vx, vy) {
+            global.__set_real_time(name, x, y, vx, vy, Date.now())
         },
         Get(name) {
-            return global.__get_real_time(name)
+            var { x, y, vx, vy, time } = global.__real_time[name]
+            const delta = Date.now() - time
+            return {
+                x: x + (vx * delta),
+                y: y + (vy * delta)
+            }
         }
     },
 

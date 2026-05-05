@@ -14,6 +14,7 @@ export default function Ui_Setup(ui_scripts, ping_frequency = -1) {
 
     var real_time_objects = {}
     var ping_data = {}
+    window.ping_data = ping_data // FIXME
 
     const handle_message = (event) => {
         const data = JSON.parse(event.data)
@@ -813,17 +814,23 @@ export default function Ui_Setup(ui_scripts, ping_frequency = -1) {
             },
             real_time: {
                 options: {},
-                Set(name, x, y, vx, vy, options_override = null) {
+                Set(name, x, y, vx, vy) {
                     channel.send(JSON.stringify({
                         type: "real_time",
                         name,
                         x, y,
                         vx, vy,
-                        options: options_override || handler.network.real_time.options
+                        time: Date.now()
                     }))
                 },
                 Get(name) {
-                    return real_time_objects[name] || { x: 0, y: 0 }
+                    const data = real_time_objects[name] || { x: 0, y: 0, vx: 0, vy: 0, time: Date.now() }
+                    const delta = Date.now() - data.time
+                    const options = handler.network.real_time.options
+                    return {
+                        x: x + (vx * delta),
+                        y: y + (vy * delta) - ((options.gravity || 0) * delta)
+                    }
                 }
             }
         },

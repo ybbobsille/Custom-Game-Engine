@@ -1,1 +1,1 @@
-ping is not showing for all players
+ping is getting players mixed up, and sometimes showing the same ping for multible players.

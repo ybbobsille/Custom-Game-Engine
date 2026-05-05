@@ -15,39 +15,18 @@ function Buffer_File(fp) {
     return file_buffer[fp]
 }
 
-function Set_Real_Time(name, x, y, vx, vy, options) {
+function Set_Real_Time(name, x, y, vx, vy, time) {
     real_time[name] = {
         x: x,
         y: y,
         vx: vx,
         vy: vy,
-        options: options,
         time: Date.now()
     }
 }
 
-function Get_Real_Time_Object(name) {
-    var { x, y, vx, vy, options, time } = real_time[name]
-    const delta = Date.now() - time
-    if (delta > global.Game_Settings.real_time_timeout) {
-        delete real_time[rt_object]
-        return null
-    }
-
-    return {
-        x: x + vx,
-        y: y + vy - (options.gravity || 0)
-    }
-}
-
 function Get_Real_Time() {
-    const final = {}
-
-    for (var rt_object of Object.keys(real_time)) {
-        final[rt_object] = Get_Real_Time_Object(rt_object)
-    }
-
-    return final
+    return real_time
 }
 
 async function Load_Game_Scripts() {
@@ -177,7 +156,7 @@ async function Start_Game() {
                         outgoing_sprites[uid].push(data.sprite_id)
                         break
                     case "real_time":
-                        Set_Real_Time(data.name, data.x, data.y, data.vx, data.vy, data.options)
+                        Set_Real_Time(data.name, data.x, data.y, data.vx, data.vy, data.time)
                         break
                     case "ping":
                         ping_data[uid] = Date.now() - data.timestamp
@@ -339,7 +318,7 @@ function Load() {
     global.sprites = {}
     global.message_buffer = []
     global.__set_real_time = Set_Real_Time
-    global.__get_real_time = Get_Real_Time_Object
+    global.__real_time = real_time
     global.Network_Log = (text) => _log(text)
     global.Backend_Log = (text) => _log(text)
 }

@@ -57,7 +57,6 @@ export async function ui_script(handler) {
     handler.network.network_name = network_name
     const character_size = { x: 30, y: 50 }
     const canvas_size = { x: 700, y: 500 }
-    const movement_speed = 3
     const jump_strength = 3
     const bounding_box = {
         min_y: 20 + character_size.y,
@@ -65,8 +64,9 @@ export async function ui_script(handler) {
         max_x: canvas_size.x - character_size.x,
         min_x: 0
     }
-    const gravity = 0.1
     const target_step = 16 // ~60 fps
+    const gravity = 0.1 / target_step
+    const movement_speed = 3 / target_step
     var users = null
     var chat_data = []
     var joined
@@ -285,6 +285,13 @@ export async function ui_script(handler) {
         }
     }
 
+    function Simulate_Character(x, y, vx, vy, delta) {
+        return {
+            x: handler.Clamp(x + (vx * delta), bounding_box.min_x, bounding_box.max_x),
+            y: handler.Clamp(y + (vy * delta), bounding_box.min_y, bounding_box.max_y)
+        }
+    }
+
     async function Tick() {
         handler.renderer.Flush()
 
@@ -309,10 +316,11 @@ export async function ui_script(handler) {
             my_velocity.y -= gravity
         }
 
-        var input_movement = in_menu ? 0 : ((handler.input.keyheld(Keycode.a) ? -1 : 0) + (handler.input.keyheld(Keycode.d) ? 1 : 0)) * movement_speed
+        my_velocity.x = in_menu ? 0 : ((handler.input.keyheld(Keycode.a) ? -1 : 0) + (handler.input.keyheld(Keycode.d) ? 1 : 0)) * movement_speed
 
-        my_position.y = handler.Clamp(my_position.y + my_velocity.y, bounding_box.min_y, bounding_box.max_y)
-        my_position.x = handler.Clamp(my_position.x + (my_velocity.x + input_movement), bounding_box.min_x, bounding_box.max_x)
+        //my_position.y = handler.Clamp(my_position.y + my_velocity.y, bounding_box.min_y, bounding_box.max_y)
+        //my_position.x = handler.Clamp(my_position.x + my_velocity.x, bounding_box.min_x, bounding_box.max_x)
+        my_position = Simulate_Character(my_position.x, my_position.y, my_velocity.x, my_velocity.y, target_step)
 
         if (my_position.y == bounding_box.min_y) {
             grounded = true
@@ -362,9 +370,12 @@ export async function ui_script(handler) {
         //#endregion
 
         //#region logs
-        if (handler.input.keyheld(Keycode.l) && !saved_logs) {
+        if (handler.input.keyheld(Keycode.l) && !saved_logs && !in_menu) {
             saveTextFile(`${handler.uid}_logs.txt`, logs)
             saved_logs = true
+        }
+        else if (!saved_logs) {
+            logs += `\n${JSON.stringify(window.ping_data)}`
         }
         //#endregion
     }
@@ -375,6 +386,7 @@ export async function ui_script(handler) {
                 Init()
                 break
             case "users_update":
+                logs += `\nUSERS: ${JSON.stringify(msg.users)}`
                 users = msg.users
                 break
             case "chat_update":
